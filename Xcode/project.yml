@@ -1,0 +1,70 @@
+name: AlexaDeviceManager
+options:
+  bundleIdPrefix: com.eugengulinsky
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+targets:
+  AlexaDeviceManager:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: ../Sources/AlexaDeviceManager
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.eugengulinsky.AlexaDeviceManager
+        PRODUCT_NAME: AlexaDeviceManager
+        MARKETING_VERSION: "1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: NO
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: WGUH67BL77
+        ENABLE_HARDENED_RUNTIME: YES
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: Alexa Device Manager
+        CFBundleShortVersionString: "1.0"
+        LSApplicationCategoryType: public.app-category.utilities
+        NSHumanReadableCopyright: ""
+        NSPrincipalClass: NSApplication
+        LSMinimumSystemVersion: "14.0"
+    entitlements:
+      path: AlexaDeviceManager.entitlements
+      properties:
+        com.apple.security.app-sandbox: true
+        com.apple.security.network.client: true
+  AlexaDeviceManagerTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - path: ../Tests/AlexaDeviceManagerTests
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        CODE_SIGN_STYLE: Automatic
+        DEVELOPMENT_TEAM: WGUH67BL77
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/AlexaDeviceManager.app/Contents/MacOS/AlexaDeviceManager"
+        BUNDLE_LOADER: "$(TEST_HOST)"
+    dependencies:
+      - target: AlexaDeviceManager
+schemes:
+  AlexaDeviceManager:
+    build:
+      targets:
+        AlexaDeviceManager: all
+        AlexaDeviceManagerTests: all
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - AlexaDeviceManagerTests
+    archive:
+      config: Release

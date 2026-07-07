@@ -1,0 +1,14 @@
+# macOS
+.DS_Store
+
+# Swift Package Manager
+.build/
+.swiftpm/
+
+# xcodegen generates this from project.yml - not hand-edited, regenerate with
+# `xcodegen generate` inside Xcode/ instead of committing generated state.
+Xcode/AlexaDeviceManager.xcodeproj/
+
+# Derived/build products
+DerivedData/
+
