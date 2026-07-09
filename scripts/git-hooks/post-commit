@@ -1,0 +1,24 @@
+#!/bin/bash
+set -euo pipefail
+
+cd "$(git rev-parse --show-toplevel)"
+
+APP_NAME="Alexa Device Manager"
+
+echo ""
+echo "=== post-commit: Build ==="
+bash scripts/build_macos.sh 2>&1 | tail -3
+
+echo "=== post-commit: Version & Sign ==="
+plutil -replace CFBundleShortVersionString -string "2.0.0" "dist/$APP_NAME.app/Contents/Info.plist" 2>/dev/null
+plutil -replace CFBundleVersion -string "2.0.0" "dist/$APP_NAME.app/Contents/Info.plist" 2>/dev/null
+codesign -f -s - "dist/$APP_NAME.app" 2>/dev/null
+
+echo "=== post-commit: Deploy to /Applications ==="
+cp -Rf "dist/$APP_NAME.app" /Applications/
+
+echo "=== post-commit: Push ==="
+unset GH_TOKEN
+git push 2>&1
+
+echo "=== post-commit: Done ==="
