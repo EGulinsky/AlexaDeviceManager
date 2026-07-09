@@ -21,7 +21,7 @@ pip install --quiet pyinstaller pyside6 qasync
 # Build with PyInstaller
 pyinstaller \
     --windowed \
-    --onefile \
+    --onedir \
     --name "$APP_NAME" \
     --add-data "resources/icons:icons" \
     --osx-bundle-identifier "$BUNDLE_ID" \

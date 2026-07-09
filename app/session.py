@@ -68,11 +68,17 @@ class AlexaSession(QObject):
         self.web_view.setUrl(self.region.base_url)
 
     async def attempt_auto_login(self) -> bool:
-        self._should_check_login = True
         self.is_loading.emit(True)
         self.last_error.emit("")
         self.web_view.setUrl(self.region.base_url)
         await self._wait_for_load()
+        try:
+            _ = await self.fetch_devices()
+            self._logged_in = True
+            self.is_logged_in.emit(True)
+        except AlexaSessionError:
+            self._logged_in = False
+            self.is_logged_in.emit(False)
         return self._logged_in
 
     async def check_login_status(self) -> None:
