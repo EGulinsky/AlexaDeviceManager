@@ -1,0 +1,12 @@
+[project]
+name = "alexa-device-manager"
+version = "1.0.0"
+description = "Cross-platform desktop app for managing Amazon Alexa smart home devices"
+requires-python = ">=3.11"
+dependencies = [
+    "pyside6>=6.6",
+    "qasync>=0.27",
+]
+
+[tool.setuptools.packages.find]
+include = ["app*"]

@@ -1,14 +1,21 @@
 # macOS
 .DS_Store
 
-# Swift Package Manager
+# Python
+venv/
+build_venv/
+__pycache__/
+*.pyc
+*.egg-info/
+
+# Build artifacts
+dist/
+build/
+DerivedData/
+*.spec
 .build/
 .swiftpm/
 
-# xcodegen generates this from project.yml - not hand-edited, regenerate with
-# `xcodegen generate` inside Xcode/ instead of committing generated state.
-Xcode/AlexaDeviceManager.xcodeproj/
-
-# Derived/build products
-DerivedData/
-
+# IDE
+.idea/
+.vscode/
