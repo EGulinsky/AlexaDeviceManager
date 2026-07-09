@@ -28,7 +28,7 @@ pyinstaller \
     --icon resources/alexa_device_manager.icns \
     --distpath dist \
     --workpath build \
-    app/main.py
+    run.py
 
 # Create DMG
 if command -v create-dmg &> /dev/null; then

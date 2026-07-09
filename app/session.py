@@ -45,15 +45,15 @@ class AlexaSession(QObject):
         self._should_check_login = False
         self._logged_in = False
 
-    @property
-    def logged_in(self) -> bool:
-        return self._logged_in
-
         self.web_view = QWebEngineView()
         self.web_view.setFixedSize(0, 0)
         page = self.web_view.page()
         page.loadFinished.connect(self._on_load_finished)
         page.urlChanged.connect(lambda url: self.current_url.emit(url.toString()))
+
+    @property
+    def logged_in(self) -> bool:
+        return self._logged_in
 
     def load_sign_in_page(self) -> None:
         self.is_loading.emit(True)
