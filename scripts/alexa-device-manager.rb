@@ -1,5 +1,5 @@
 cask "alexa-device-manager" do
-  version "1.0.0"
+  version "2.0.0"
   sha256 ""
 
   url "https://github.com/your-username/alexa-device-manager/releases/download/v#{version}/Alexa-Device-Manager-#{version}.dmg"

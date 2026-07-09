@@ -4,8 +4,7 @@ A cross-platform desktop app for managing Amazon Alexa smart home devices: list,
 batch-delete unresponsive or unwanted devices, organize devices into groups, and
 inspect the raw data Alexa has for each device.
 
-Built on top of Amazon's undocumented, reverse-engineered internal APIs (see
-[NOTES.md](NOTES.md) for the full technical writeup) since Amazon has deprecated
+Built on top of Amazon's undocumented, reverse-engineered internal APIs since Amazon has deprecated
 the web UI for managing smart home devices and the mobile app is tedious for
 bulk operations.
 
@@ -63,8 +62,7 @@ from *inside* that authenticated page — the same way the official Alexa web ap
 does. No credentials are ever stored or transmitted by the app itself beyond the
 standard browser session cookies the WebEngine already manages.
 
-See [NOTES.md](NOTES.md) for the full API reverse-engineering notes, including
-the `applianceId` format, region/host selection, and known limitations.
+The `applianceId` format, region/host selection, and other implementation details are documented in the source code under `app/models/` and `app/session.py`.
 
 ## Building for Distribution
 

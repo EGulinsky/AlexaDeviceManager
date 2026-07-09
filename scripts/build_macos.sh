@@ -3,7 +3,7 @@ set -euo pipefail
 
 APP_NAME="Alexa Device Manager"
 BUNDLE_ID="com.alexa-device-manager"
-VERSION="1.0.0"
+VERSION="2.0.0"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
