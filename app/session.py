@@ -46,7 +46,6 @@ class AlexaSession(QObject):
         self._logged_in = False
 
         self.web_view = QWebEngineView()
-        self.web_view.setFixedSize(0, 0)
         page = self.web_view.page()
         page.loadFinished.connect(self._on_load_finished)
         page.urlChanged.connect(lambda url: self.current_url.emit(url.toString()))
