@@ -80,7 +80,7 @@ if [`create-dmg`](https://github.com/create-dmg/create-dmg) is installed. The
 bundle identifier is `com.alexa-device-manager` and the icon comes from
 `resources/alexa_device_manager.icns`.
 
-### Windows (.exe)
+### Windows (.exe + installer)
 
 ```sh
 # Cross-compile from any platform:
@@ -90,7 +90,17 @@ bash scripts/build_windows.sh
 Produces a standalone `.exe` in `dist/`. Expects a `resources/icon.ico` file
 for the application icon (optional — the build skips the icon flag if absent).
 
-### Linux (.AppImage)
+To create a proper Windows installer (`.exe` setup) with Start Menu and
+uninstall support, use the Inno Setup script after building:
+
+```sh
+# Requires Inno Setup 6+ (https://jrsoftware.org/isdl.php)
+iscc scripts/build_windows_installer.iss
+```
+
+Output: `dist/AlexaDeviceManager-2.0.0-Setup.exe`
+
+### Linux (.AppImage + .deb)
 
 ```sh
 bash scripts/build_linux.sh
@@ -98,6 +108,14 @@ bash scripts/build_linux.sh
 
 Produces a standalone AppImage-style executable in `dist/`. Expects a
 `resources/icon.png` file for the application icon (optional).
+
+To create a Debian package (`.deb`) for Debian/Ubuntu-based distributions:
+
+```sh
+bash scripts/build_linux_deb.sh
+```
+
+Output: `dist/alexa-device-manager_2.0.0_amd64.deb`
 
 ## Project Structure
 
@@ -127,7 +145,9 @@ AlexaDeviceManager/
 ├── scripts/
 │   ├── build_macos.sh            # macOS .app + DMG build
 │   ├── build_windows.sh          # Windows .exe build
+│   ├── build_windows_installer.iss # Windows Inno Setup installer script
 │   ├── build_linux.sh            # Linux AppImage build
+│   ├── build_linux_deb.sh        # Linux .deb package builder
 │   ├── deploy.sh                 # Build, sign, deploy to /Applications
 │   └── git-hooks/
 │       └── post-commit           # Auto-build & deploy on commit
