@@ -9,12 +9,18 @@ from .main_window import MainWindow
 
 
 def main() -> None:
+    log_file = "/tmp/alexa_device_manager.log"
     logging.basicConfig(
         level=logging.DEBUG,
         format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
         datefmt="%H:%M:%S",
-        stream=sys.stderr,
+        handlers=[
+            logging.FileHandler(log_file, mode="w"),
+            logging.StreamHandler(sys.stderr),
+        ],
     )
+    log = logging.getLogger(__name__)
+    log.info("Logging to %s", log_file)
 
     app = QApplication(sys.argv)
     app.setApplicationName("AlexaDeviceManager")
