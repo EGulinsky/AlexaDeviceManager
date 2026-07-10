@@ -56,9 +56,12 @@ class LoginDialog(QDialog):
 
         # Info text
         info = QLabel(
-            "First use \"Sign in with Amazon\" - this opens the Amazon homepage. "
+            'First use "Sign in with Amazon" — this opens the Amazon homepage. '
             "Click \"Sign in\" in the top right there and log in normally with "
-            "email/password (+ 2FA). Then tap \"Load Alexa\" to pick up the session."
+            "email/password (+ 2FA). Then tap \"Load Alexa\" to pick up the session. "
+            "If Check Sign-In fails, make sure the URL below starts with "
+            "\"alexa.amazon.\" (or your region's Alexa domain) — "
+            "if not, try a different region."
         )
         info.setStyleSheet("color: gray; font-size: 11px; padding: 0 8px;")
         info.setWordWrap(True)
@@ -111,7 +114,20 @@ class LoginDialog(QDialog):
         self.check_btn.setEnabled(not loading)
 
     def _on_error(self, err: str) -> None:
-        self.error_label.setText(err)
+        if err:
+            hint = ""
+            if "timed out" in err.lower():
+                hint = " The page may have redirected. Try a different region, or load the Alexa host again."
+            elif "http error -1" in err.lower():
+                hint = " Could not reach the API. Check your network and the current URL."
+            elif "http error" in err.lower():
+                hint = " The API returned an error. You may need to sign in again."
+            self.error_label.setText(err + hint)
 
     def _on_url(self, url: str) -> None:
         self.url_label.setText(f"Current URL: {url}")
+
+    def done(self, result: int) -> None:
+        self.session.web_view.setParent(None)
+        self.session.web_view.hide()
+        super().done(result)

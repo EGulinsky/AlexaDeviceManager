@@ -1,4 +1,5 @@
 from __future__ import annotations
+import asyncio
 import json
 from typing import Any
 from PySide6.QtCore import QObject, Signal, Slot
@@ -93,10 +94,13 @@ class AlexaSession(QObject):
 
     # --- JS bridge ---
 
-    async def evaluate(self, script: str) -> str:
+    async def evaluate(self, script: str, timeout_ms: int = 30000) -> str:
         future = self._create_future()
         self.web_view.page().runJavaScript(script, self._js_callback(future))
-        return await future
+        try:
+            return await asyncio.wait_for(future, timeout=timeout_ms / 1000)
+        except asyncio.TimeoutError:
+            raise AlexaSessionError("JS evaluation timed out — page may have navigated away")
 
     def _js_callback(self, future):
         def callback(result: Any):
@@ -111,7 +115,6 @@ class AlexaSession(QObject):
         return callback
 
     def _create_future(self):
-        import asyncio
         return asyncio.get_event_loop().create_future()
 
     async def _wait_for_load(self) -> None:
@@ -125,8 +128,12 @@ class AlexaSession(QObject):
             self._load_finished_future.set_result(None)
             del self._load_finished_future
         if self._should_check_login:
-            import asyncio
-            asyncio.ensure_future(self.check_login_status())
+            self._should_check_login = False
+            asyncio.ensure_future(self._auto_check_after_settle())
+
+    async def _auto_check_after_settle(self) -> None:
+        await asyncio.sleep(1.5)
+        await self.check_login_status()
 
     # --- Fetch helpers ---
 
