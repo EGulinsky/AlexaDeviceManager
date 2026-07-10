@@ -62,37 +62,42 @@ from *inside* that authenticated page — the same way the official Alexa web ap
 does. No credentials are ever stored or transmitted by the app itself beyond the
 standard browser session cookies the WebEngine already manages.
 
-The `applianceId` format, region/host selection, and other implementation details are documented in the source code under `app/models/` and `app/session.py`.
+The `applianceId` format, region/host selection, and other implementation details are documented in [`NOTES.md`](NOTES.md) and the source code under `app/models/` and `app/session.py`.
 
 ## Building for Distribution
+
+Build scripts are provided for all three platforms under `scripts/`. Each script
+creates a Python venv, installs dependencies, and runs PyInstaller.
 
 ### macOS (.app + DMG)
 
 ```sh
-pip install pyinstaller
-pyinstaller --windowed --onefile --name "Alexa Device Manager" \
-  --icon resources/alexa_device_manager.icns app/main.py
-# Create DMG:
-hdiutil create -volname "Alexa Device Manager" \
-  -srcfolder dist/Alexa\ Device\ Manager.app \
-  -ov -format UDZO dist/AlexaDeviceManager.dmg
+bash scripts/build_macos.sh
 ```
 
-Or use `brew install --cask alexa-device-manager` (once published).
+The script builds a `.app` bundle (requires macOS) and optionally creates a DMG
+if [`create-dmg`](https://github.com/create-dmg/create-dmg) is installed. The
+bundle identifier is `com.alexa-device-manager` and the icon comes from
+`resources/alexa_device_manager.icns`.
 
 ### Windows (.exe)
 
 ```sh
-pyinstaller --windowed --onefile --name "Alexa Device Manager" \
-  --icon resources/icon.ico app/main.py
+# Cross-compile from any platform:
+bash scripts/build_windows.sh
 ```
+
+Produces a standalone `.exe` in `dist/`. Expects a `resources/icon.ico` file
+for the application icon (optional — the build skips the icon flag if absent).
 
 ### Linux (.AppImage)
 
 ```sh
-pyinstaller --windowed --onefile --name "alexa-device-manager" \
-  --icon resources/icon.png app/main.py
+bash scripts/build_linux.sh
 ```
+
+Produces a standalone AppImage-style executable in `dist/`. Expects a
+`resources/icon.png` file for the application icon (optional).
 
 ## Project Structure
 
@@ -109,6 +114,7 @@ AlexaDeviceManager/
 │   ├── view_model.py             # Business logic
 │   ├── store.py                  # JSON persistence
 │   └── models/                   # Data models
+│       ├── __init__.py
 │       ├── device.py
 │       ├── device_group.py
 │       ├── appliance_id.py       # ApplianceId parser (base64 decode)
@@ -116,12 +122,23 @@ AlexaDeviceManager/
 │       ├── filter.py
 │       └── lookup_tables.py      # Display categories + HA domains
 ├── resources/
-│   └── alexa_device_manager.icns
+│   ├── alexa_device_manager.icns # macOS app icon
+│   └── icons/                    # Platform icon assets
 ├── scripts/
-│   ├── build_macos.sh
-│   └── alexa-device-manager.rb   # Homebrew Cask formula
+│   ├── build_macos.sh            # macOS .app + DMG build
+│   ├── build_windows.sh          # Windows .exe build
+│   ├── build_linux.sh            # Linux AppImage build
+│   ├── deploy.sh                 # Build, sign, deploy to /Applications
+│   └── git-hooks/
+│       └── post-commit           # Auto-build & deploy on commit
+├── run.py                        # Entry point (used by PyInstaller)
+├── run.sh                        # Dev launcher (macOS/Linux)
+├── NOTES.md                      # Reverse-engineered API notes
 ├── requirements.txt
-└── pyproject.toml
+├── pyproject.toml
+├── LICENSE
+├── .gitignore
+└── README.md
 ```
 
 ## License
