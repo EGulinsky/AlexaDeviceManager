@@ -3,7 +3,7 @@ import asyncio
 import json
 import logging
 from typing import Any
-from PySide6.QtCore import QObject, Signal, Slot, QUrl
+from PySide6.QtCore import QObject, Signal, Slot, QUrl, QTimer
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWebEngineCore import QWebEnginePage
 from qasync import asyncSlot, asyncClose
@@ -67,27 +67,19 @@ class AlexaSession(QObject):
         self.web_view.setUrl(self.region.sign_in_url)
 
     def load_alexa_host(self) -> None:
-        log.info("load_alexa_host -> %s  (via setContent)", self.region.base_url)
+        log.info("load_alexa_host -> %s", self.region.base_url)
         self.is_loading.emit(True)
         self.last_error.emit("")
         self._should_check_login = True
-        page = self.web_view.page()
-        page.setContent(
-            b"<html><head></head><body></body></html>",
-            "text/html",
-            QUrl(self.region.base_url),
-        )
+        self._settle_timer = 0
+        self.web_view.setUrl(self.region.base_url)
 
     async def attempt_auto_login(self) -> bool:
-        log.info("attempt_auto_login: setting content with base %s", self.region.base_url)
+        log.info("attempt_auto_login: navigating to %s", self.region.base_url)
         self.is_loading.emit(True)
         self.last_error.emit("")
-        page = self.web_view.page()
-        page.setContent(
-            b"<html><head></head><body></body></html>",
-            "text/html",
-            QUrl(self.region.base_url),
-        )
+        self._settle_timer = 0
+        self.web_view.setUrl(self.region.base_url)
         await self._wait_for_load()
         try:
             _ = await self.fetch_devices()
@@ -160,11 +152,16 @@ class AlexaSession(QObject):
             del self._load_finished_future
         if self._should_check_login:
             self._should_check_login = False
-            asyncio.ensure_future(self._auto_check_after_settle())
+            QTimer.singleShot(0, self._start_settled_check)
+
+    def _start_settled_check(self) -> None:
+        asyncio.ensure_future(self._auto_check_after_settle())
 
     async def _auto_check_after_settle(self) -> None:
-        log.info("_auto_check_after_settle: waiting 1.5s for page to settle ...")
-        await asyncio.sleep(1.5)
+        log.info("_auto_check_after_settle: waiting 3s for page to settle ...")
+        await asyncio.sleep(3)
+        page_url = self.web_view.page().url().toString()
+        log.info("_auto_check_after_settle: page URL = %s", page_url)
         log.info("_auto_check_after_settle: now checking login status")
         await self.check_login_status()
 

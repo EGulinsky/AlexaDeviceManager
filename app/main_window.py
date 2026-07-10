@@ -134,8 +134,15 @@ class MainWindow(QMainWindow):
         self.device_list.set_devices(filtered)
 
     def _show_login(self) -> None:
-        dialog = LoginDialog(self.session, self)
-        dialog.exec()
+        if hasattr(self, "_login_dialog") and self._login_dialog and self._login_dialog.isVisible():
+            self._login_dialog.raise_()
+            return
+        self._login_dialog = LoginDialog(self.session, self)
+        self._login_dialog.finished.connect(self._on_login_finished)
+        self._login_dialog.show()
+
+    def _on_login_finished(self, result: int) -> None:
+        self._login_dialog = None
 
     async def _auto_login(self) -> None:
         already = await self.session.attempt_auto_login()
