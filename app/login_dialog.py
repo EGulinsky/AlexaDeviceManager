@@ -1,4 +1,6 @@
 from __future__ import annotations
+import asyncio
+import logging
 from PySide6.QtWidgets import (
     QDialog, QVBoxLayout, QHBoxLayout, QPushButton, QComboBox,
     QLabel, QProgressBar,
@@ -8,6 +10,8 @@ from PySide6.QtCore import Qt
 from .session import AlexaSession
 from .models.region import AlexaRegion
 
+log = logging.getLogger(__name__)
+
 
 class LoginDialog(QDialog):
     def __init__(self, session: AlexaSession, parent=None):
@@ -15,6 +19,7 @@ class LoginDialog(QDialog):
         self.session = session
         self.setWindowTitle("Sign in to Amazon")
         self.setMinimumSize(800, 700)
+        log.info("LoginDialog opened, region=%s", session.region.label)
 
         layout = QVBoxLayout(self)
         layout.setContentsMargins(0, 0, 0, 0)
@@ -94,13 +99,15 @@ class LoginDialog(QDialog):
 
     def _on_region_changed(self, index: int) -> None:
         region: AlexaRegion = self.region_combo.currentData()
+        log.info("Region changed to: %s (%s)", region.label, region.base_url)
         self.session.region = region
 
     def _check_login(self) -> None:
-        import asyncio
+        log.info("Check Sign-In button clicked")
         asyncio.ensure_future(self.session.check_login_status())
 
     def _on_login_changed(self, logged_in: bool) -> None:
+        log.info("Login status changed: %s", "SIGNED IN" if logged_in else "NOT signed in")
         if logged_in:
             self.status_label.setText("Signed In")
             self.status_label.setStyleSheet("color: green;")
@@ -109,11 +116,13 @@ class LoginDialog(QDialog):
             self.status_label.setStyleSheet("color: gray;")
 
     def _on_loading(self, loading: bool) -> None:
+        log.debug("Loading state: %s", loading)
         self.sign_in_btn.setEnabled(not loading)
         self.load_alexa_btn.setEnabled(not loading)
         self.check_btn.setEnabled(not loading)
 
     def _on_error(self, err: str) -> None:
+        log.warning("Error signal: %s", err)
         if err:
             hint = ""
             if "timed out" in err.lower():
@@ -125,9 +134,11 @@ class LoginDialog(QDialog):
             self.error_label.setText(err + hint)
 
     def _on_url(self, url: str) -> None:
+        log.debug("Current URL: %s", url)
         self.url_label.setText(f"Current URL: {url}")
 
     def done(self, result: int) -> None:
+        log.info("LoginDialog closing, result=%d", result)
         self.session.web_view.setParent(None)
         self.session.web_view.hide()
         super().done(result)

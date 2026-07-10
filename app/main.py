@@ -1,6 +1,7 @@
 from __future__ import annotations
 import sys
 import asyncio
+import logging
 from PySide6.QtWidgets import QApplication
 from qasync import QEventLoop
 
@@ -8,6 +9,13 @@ from .main_window import MainWindow
 
 
 def main() -> None:
+    logging.basicConfig(
+        level=logging.DEBUG,
+        format="%(asctime)s [%(levelname)s] %(name)s: %(message)s",
+        datefmt="%H:%M:%S",
+        stream=sys.stderr,
+    )
+
     app = QApplication(sys.argv)
     app.setApplicationName("AlexaDeviceManager")
     app.setOrganizationName("AlexaDeviceManager")

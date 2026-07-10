@@ -1,6 +1,7 @@
 from __future__ import annotations
 import asyncio
 import json
+import logging
 from typing import Any
 from PySide6.QtCore import QObject, Signal, Slot
 from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -11,6 +12,8 @@ from .models.device import Connectivity, Device
 from .models.device_group import DeviceGroup
 from .models.appliance_id import ApplianceIDParser
 from .models.region import AlexaRegion
+
+log = logging.getLogger(__name__)
 
 
 class AlexaSessionError(Exception):
@@ -50,24 +53,28 @@ class AlexaSession(QObject):
         page = self.web_view.page()
         page.loadFinished.connect(self._on_load_finished)
         page.urlChanged.connect(lambda url: self.current_url.emit(url.toString()))
+        log.info("Session initialized, region=%s base_url=%s", self.region.label, self.region.base_url)
 
     @property
     def logged_in(self) -> bool:
         return self._logged_in
 
     def load_sign_in_page(self) -> None:
+        log.info("load_sign_in_page -> %s", self.region.sign_in_url)
         self.is_loading.emit(True)
         self.last_error.emit("")
         self._should_check_login = False
         self.web_view.setUrl(self.region.sign_in_url)
 
     def load_alexa_host(self) -> None:
+        log.info("load_alexa_host -> %s", self.region.base_url)
         self.is_loading.emit(True)
         self.last_error.emit("")
         self._should_check_login = True
         self.web_view.setUrl(self.region.base_url)
 
     async def attempt_auto_login(self) -> bool:
+        log.info("attempt_auto_login: navigating to %s", self.region.base_url)
         self.is_loading.emit(True)
         self.last_error.emit("")
         self.web_view.setUrl(self.region.base_url)
@@ -76,21 +83,26 @@ class AlexaSession(QObject):
             _ = await self.fetch_devices()
             self._logged_in = True
             self.is_logged_in.emit(True)
-        except AlexaSessionError:
+            log.info("attempt_auto_login: SUCCESS")
+        except AlexaSessionError as e:
             self._logged_in = False
             self.is_logged_in.emit(False)
+            log.warning("attempt_auto_login: FAILED — %s", e)
         return self._logged_in
 
     async def check_login_status(self) -> None:
+        log.info("check_login_status: running fetch_devices ...")
         try:
             _ = await self.fetch_devices()
             self._logged_in = True
             self.is_logged_in.emit(True)
             self.last_error.emit("")
+            log.info("check_login_status: SIGNED IN")
         except AlexaSessionError as e:
             self._logged_in = False
             self.is_logged_in.emit(False)
             self.last_error.emit(str(e))
+            log.warning("check_login_status: NOT signed in — %s", e)
 
     # --- JS bridge ---
 
@@ -98,19 +110,26 @@ class AlexaSession(QObject):
         future = self._create_future()
         self.web_view.page().runJavaScript(script, self._js_callback(future))
         try:
-            return await asyncio.wait_for(future, timeout=timeout_ms / 1000)
+            result = await asyncio.wait_for(future, timeout=timeout_ms / 1000)
+            log.debug("evaluate OK (%d chars)", len(result))
+            return result
         except asyncio.TimeoutError:
+            log.warning("evaluate TIMEOUT after %d ms", timeout_ms)
             raise AlexaSessionError("JS evaluation timed out — page may have navigated away")
 
     def _js_callback(self, future):
         def callback(result: Any):
             if future.done():
+                log.debug("_js_callback: future already done, ignoring")
                 return
             if result is None:
+                log.debug("_js_callback: result=None (JS returned undefined/null)")
                 future.set_result("")
             elif isinstance(result, str):
+                log.debug("_js_callback: result=str (%d chars)", len(result))
                 future.set_result(result)
             else:
+                log.debug("_js_callback: result=%s", type(result).__name__)
                 future.set_result(json.dumps(result))
         return callback
 
@@ -123,8 +142,10 @@ class AlexaSession(QObject):
         await future
 
     def _on_load_finished(self, ok: bool) -> None:
+        log.info("_on_load_finished: ok=%s should_check=%s", ok, self._should_check_login)
         self.is_loading.emit(False)
         if hasattr(self, "_load_finished_future") and not self._load_finished_future.done():
+            log.debug("_on_load_finished: resolving _wait_for_load future")
             self._load_finished_future.set_result(None)
             del self._load_finished_future
         if self._should_check_login:
@@ -132,7 +153,9 @@ class AlexaSession(QObject):
             asyncio.ensure_future(self._auto_check_after_settle())
 
     async def _auto_check_after_settle(self) -> None:
+        log.info("_auto_check_after_settle: waiting 1.5s for page to settle ...")
         await asyncio.sleep(1.5)
+        log.info("_auto_check_after_settle: now checking login status")
         await self.check_login_status()
 
     # --- Fetch helpers ---
@@ -173,11 +196,14 @@ class AlexaSession(QObject):
         try:
             envelope = json.loads(raw)
         except json.JSONDecodeError:
+            log.error("_decode_envelope: invalid envelope JSON: %.200s", raw)
             raise InvalidResponseError("Invalid envelope JSON")
         status = envelope.get("status", -1)
-        if status != 200:
-            raise HTTPError(status)
         body = envelope.get("body")
+        log.debug("_decode_envelope: HTTP status=%s body_len=%s", status, len(body) if isinstance(body, str) else "?")
+        if status != 200:
+            log.warning("_decode_envelope: non-200 status=%d body=%.200s", status, body or "")
+            raise HTTPError(status)
         if body is None:
             raise InvalidResponseError("No body in envelope")
         if isinstance(body, str):
@@ -191,7 +217,12 @@ class AlexaSession(QObject):
         try:
             json_data = json.loads(body_data)
         except json.JSONDecodeError:
+            log.error("_run_graphql: invalid JSON response: %.300s", body_data)
             raise InvalidResponseError("Invalid JSON response")
+        if "errors" in json_data:
+            log.warning("_run_graphql: GraphQL errors: %s", json_data["errors"])
+        else:
+            log.debug("_run_graphql: OK — data keys: %s", list(json_data.get("data", {}).keys()))
         return json_data
 
     async def _run_mutation(self, query: str, success_key: str) -> bool:
@@ -208,7 +239,9 @@ class AlexaSession(QObject):
     # --- Device listing ---
 
     async def fetch_devices(self) -> list[Device]:
+        log.info("fetch_devices: discovering endpoint fields ...")
         discovered = await self._introspect_fields()
+        log.info("fetch_devices: type=%s, %d fields", discovered["typeName"], len(discovered["fields"]))
         field_names = {f["name"] for f in discovered["fields"]}
         extra_fields = [f["name"] for f in discovered["fields"] if self._is_leaf_field(f)]
         include_features = "features" in field_names
@@ -427,10 +460,13 @@ class AlexaSession(QObject):
 
     async def _introspect_fields(self) -> dict:
         typename_query = "query { endpoints { items { __typename } } }"
+        log.debug("_introspect_fields: querying __typename ...")
         json_data = await self._run_graphql(typename_query)
         try:
             type_name = json_data["data"]["endpoints"]["items"][0]["__typename"]
+            log.debug("_introspect_fields: type_name=%s", type_name)
         except (KeyError, IndexError):
+            log.warning("_introspect_fields: no __typename received — response=%s", json_data)
             raise GraphQLErrors(["No __typename received"])
         details = await self._introspect_type_details(type_name)
         return {"typeName": type_name, "fields": details.get("fields", [])}
