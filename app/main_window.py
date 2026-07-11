@@ -1,8 +1,10 @@
 from __future__ import annotations
 import asyncio
+import subprocess
 from PySide6.QtWidgets import (
     QMainWindow, QSplitter, QToolBar, QWidget, QVBoxLayout,
-    QMessageBox, QApplication,
+    QMessageBox, QApplication, QDialog, QTextEdit, QVBoxLayout as QVBoxL,
+    QPushButton,
 )
 from PySide6.QtCore import Qt, QSize
 from PySide6.QtGui import QAction
@@ -16,12 +18,14 @@ from .sidebar import Sidebar
 from .batch_bar import BatchActionsBar
 from .models.filter import DeviceFilter, BatchAction
 from .models.device import Device
+from ._version import VERSION
+from qasync import asyncSlot
 
 
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Alexa Device Manager")
+        self.setWindowTitle(f"Alexa Device Manager — {VERSION}")
         self.setMinimumSize(900, 600)
         self.resize(1100, 700)
 
@@ -33,6 +37,7 @@ class MainWindow(QMainWindow):
         # UI
         self._setup_ui()
         self._setup_toolbar()
+        self._setup_menu()
         self._connect_signals()
 
     def start(self) -> None:
@@ -79,6 +84,36 @@ class MainWindow(QMainWindow):
         self.fields_action.setEnabled(False)
         toolbar.addAction(self.fields_action)
 
+    def _setup_menu(self) -> None:
+        menu_bar = self.menuBar()
+        help_menu = menu_bar.addMenu("&Help")
+        about_action = QAction("About Alexa Device Manager", self)
+        about_action.triggered.connect(self._show_about)
+        help_menu.addAction(about_action)
+
+    def _show_about(self) -> None:
+        try:
+            log = subprocess.run(
+                ["git", "log", "--oneline", "-50"],
+                capture_output=True, text=True, timeout=5
+            ).stdout
+        except Exception:
+            log = "(could not load changelog)"
+
+        text = (
+            f"<h3>Alexa Device Manager</h3>"
+            f"<p>Version: <b>{VERSION}</b></p>"
+            f"<hr>"
+            f"<h4>Changelog (recent commits)</h4>"
+            f"<pre style='font-size: 10px;'>{log}</pre>"
+        )
+        msg = QMessageBox(self)
+        msg.setWindowTitle("About Alexa Device Manager")
+        msg.setTextFormat(Qt.RichText)
+        msg.setText(text)
+        msg.setStandardButtons(QMessageBox.Ok)
+        msg.exec()
+
     def _connect_signals(self) -> None:
         self.session.is_logged_in.connect(self._on_login_changed)
         self.device_list.selection_changed.connect(self._on_selection_changed)
@@ -101,6 +136,8 @@ class MainWindow(QMainWindow):
         self.sign_in_action.setText("Signed in" if logged_in else "Sign in")
         self.refresh_action.setEnabled(logged_in)
         self.fields_action.setEnabled(logged_in)
+        if logged_in:
+            asyncio.ensure_future(self._refresh())
 
     def _on_devices_changed(self) -> None:
         self.device_list.set_devices(self.view_model.devices)
@@ -151,9 +188,11 @@ class MainWindow(QMainWindow):
         else:
             self._show_login()
 
+    @asyncSlot()
     async def _refresh(self) -> None:
         await self.view_model.refresh()
 
+    @asyncSlot()
     async def _check_fields(self) -> None:
         try:
             text = await self.session.fetch_all_endpoint_field_names()
@@ -196,14 +235,17 @@ class MainWindow(QMainWindow):
     def _delete_all(self) -> None:
         self._confirm_batch_delete(BatchAction.all())
 
+    @asyncSlot(str, object)
     async def _add_to_group(self, group_id: str, group) -> None:
         devices = self.device_list.selected_devices()
         await self.view_model.add_devices(devices, to_group=group)
 
+    @asyncSlot(str, object)
     async def _remove_from_group(self, group_id: str, group) -> None:
         devices = self.device_list.selected_devices()
         await self.view_model.remove_devices(devices, from_group=group)
 
+    @asyncSlot(str)
     async def _create_group_from_selection(self, name: str) -> None:
         devices = self.device_list.selected_devices()
         await self.view_model.create_group(name=name, members=devices)

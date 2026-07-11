@@ -3,12 +3,27 @@ set -euo pipefail
 
 APP_NAME="Alexa Device Manager"
 BUNDLE_ID="com.alexa-device-manager"
-VERSION="2.0.0"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 PROJECT_DIR="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_DIR"
+
+# Bump build number in _version.py
+python3 << 'PYEOF'
+import re
+path = 'app/_version.py'
+ns = {}
+exec(open(path).read(), ns)
+cur = ns['VERSION']
+new = re.sub(r'build\.(\d+)', lambda m: f'build.{int(m.group(1))+1}', cur)
+print(f'Version: {cur} -> {new}')
+with open(path, 'w') as f:
+    f.write(f"VERSION = '{new}'\n")
+PYEOF
+
+# Read the bumped version
+VERSION=$(python3 -c "exec(open('app/_version.py').read()); print(VERSION)")
 
 # Clean up
 rm -rf build dist
@@ -29,22 +44,13 @@ pyinstaller \
     --workpath build \
     run.py
 
-# Create DMG
-if command -v create-dmg &> /dev/null; then
-    create-dmg \
-        --volname "$APP_NAME" \
-        --icon "$APP_NAME.app" 120 120 \
-        --app-drop-link 360 120 \
-        --window-pos 200 120 \
-        --window-size 480 320 \
-        --hide-extension "$APP_NAME.app" \
-        "dist/$APP_NAME.dmg" \
-        "dist/$APP_NAME.app"
-fi
-
 # Deactivate and clean
 deactivate
 rm -rf build_venv build
 
-echo "Build complete: dist/$APP_NAME.app"
-echo "DMG: dist/$APP_NAME.dmg"
+# Copy to Applications
+rm -rf "/Applications/$APP_NAME.app"
+cp -R "dist/$APP_NAME.app" "/Applications/$APP_NAME.app"
+
+echo "Build complete: dist/$APP_NAME.app (version $VERSION)"
+echo "Installed: /Applications/$APP_NAME.app"

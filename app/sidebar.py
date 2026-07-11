@@ -134,7 +134,7 @@ class Sidebar(QWidget):
         rename_action = menu.addAction("Rename...")
         delete_action = menu.addAction("Delete...")
 
-        action = menu.exec(self.tree.viewport().mapToGlobal(pos))
+        action = self._exec_menu(menu, pos)
         if action == rename_action:
             new_name, ok = QInputDialog.getText(self, "Rename Group", "Name:", text=group.name)
             if ok and new_name:
@@ -149,6 +149,9 @@ class Sidebar(QWidget):
             if reply == QMessageBox.Yes:
                 import asyncio
                 asyncio.ensure_future(self._view_model.delete_group(group))
+
+    def _exec_menu(self, menu, pos):
+        return menu.exec(self.tree.viewport().mapToGlobal(pos))
 
     def dragEnterEvent(self, event: QDragEnterEvent) -> None:
         if event.mimeData().hasText():

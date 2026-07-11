@@ -197,7 +197,7 @@ class DeviceListView(QWidget):
         if not remove_menu.actions():
             remove_menu.addAction("Not in any group").setEnabled(False)
 
-        action = menu.exec(self.table.viewport().mapToGlobal(pos))
+        action = self._exec_menu(menu, pos)
         if action and action.parent() == groups_menu:
             group_id = action.data()
             group = next((g for g in self._view_model.device_groups if g.id == group_id), None)
@@ -210,3 +210,6 @@ class DeviceListView(QWidget):
             if group:
                 import asyncio
                 asyncio.ensure_future(self._view_model.remove_devices([device], from_group=group))
+
+    def _exec_menu(self, menu, pos):
+        return menu.exec(self.table.viewport().mapToGlobal(pos))

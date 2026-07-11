@@ -8,7 +8,7 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWebEngineCore import QWebEnginePage
 from qasync import asyncSlot, asyncClose
 
-from .models.device import Connectivity, Device
+from .models.device import Connectivity as _Connectivity, Device
 from .models.device_group import DeviceGroup
 from .models.appliance_id import ApplianceIDParser
 from .models.region import AlexaRegion
@@ -36,6 +36,20 @@ class GraphQLErrors(AlexaSessionError):
         self.messages = messages
 
 
+class AlexaWebEnginePage(QWebEnginePage):
+    def __init__(self, parent: QObject | None = None):
+        super().__init__(parent)
+        self._block_external_nav = False
+
+    def acceptNavigationRequest(self, url: QUrl, type_: QWebEnginePage.NavigationType, is_main_frame: bool) -> bool:
+        if self._block_external_nav and is_main_frame:
+            current = self.url()
+            if current.isValid() and url.isValid() and url.host() != current.host():
+                log.debug("blocked nav: %s -> %s", current.host(), url.host())
+                return False
+        return super().acceptNavigationRequest(url, type_, is_main_frame)
+
+
 class AlexaSession(QObject):
     is_logged_in = Signal(bool)
     is_loading = Signal(bool)
@@ -50,9 +64,10 @@ class AlexaSession(QObject):
         self._logged_in = False
 
         self.web_view = QWebEngineView()
-        page = self.web_view.page()
-        page.loadFinished.connect(self._on_load_finished)
-        page.urlChanged.connect(lambda url: self.current_url.emit(url.toString()))
+        self._page = AlexaWebEnginePage()
+        self.web_view.setPage(self._page)
+        self._page.loadFinished.connect(self._on_load_finished)
+        self._page.urlChanged.connect(lambda url: self.current_url.emit(url.toString()))
         log.info("Session initialized, region=%s base_url=%s", self.region.label, self.region.base_url)
 
     @property
@@ -81,15 +96,18 @@ class AlexaSession(QObject):
         self._settle_timer = 0
         self.web_view.setUrl(self.region.base_url)
         await self._wait_for_load()
+        self._page._block_external_nav = True
         try:
             _ = await self.fetch_devices()
             self._logged_in = True
             self.is_logged_in.emit(True)
             log.info("attempt_auto_login: SUCCESS")
-        except AlexaSessionError as e:
+        except Exception as e:
             self._logged_in = False
             self.is_logged_in.emit(False)
             log.warning("attempt_auto_login: FAILED — %s", e)
+        finally:
+            self._page._block_external_nav = False
         return self._logged_in
 
     async def check_login_status(self) -> None:
@@ -152,6 +170,7 @@ class AlexaSession(QObject):
             del self._load_finished_future
         if self._should_check_login:
             self._should_check_login = False
+            self._page._block_external_nav = True
             QTimer.singleShot(0, self._start_settled_check)
 
     def _start_settled_check(self) -> None:
@@ -163,23 +182,25 @@ class AlexaSession(QObject):
         page_url = self.web_view.page().url().toString()
         log.info("_auto_check_after_settle: page URL = %s", page_url)
         log.info("_auto_check_after_settle: now checking login status")
-        await self.check_login_status()
+        try:
+            await self.check_login_status()
+        finally:
+            self._page._block_external_nav = False
 
     # --- Fetch helpers ---
 
     @staticmethod
     def _fetch_script(path: str, method: str, json_body: str) -> str:
         return f"""
-        (async () => {{
+        (function() {{
+            var xhr = new XMLHttpRequest();
+            xhr.open('{method}', '{path}', false);
+            xhr.withCredentials = true;
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            xhr.setRequestHeader('Accept', 'application/json');
             try {{
-                const res = await fetch('{path}', {{
-                    method: '{method}',
-                    credentials: 'include',
-                    headers: {{"Content-Type": "application/json", "Accept": "application/json"}},
-                    body: JSON.stringify({json_body})
-                }});
-                const text = await res.text();
-                return JSON.stringify({{status: res.status, body: text}});
+                xhr.send(JSON.stringify({json_body}));
+                return JSON.stringify({{status: xhr.status, body: xhr.responseText}});
             }} catch (e) {{
                 return JSON.stringify({{status: -1, body: String(e)}});
             }}
@@ -327,7 +348,7 @@ class AlexaSession(QObject):
             associated_unit_id = associated_units.get("id")
 
         features = item.get("features") or []
-        connectivity_val = Device.Connectivity.UNKNOWN
+        connectivity_val = _Connectivity.UNKNOWN
         if isinstance(features, list):
             conn_feature = next((f for f in features if f.get("name") == "connectivity"), None)
             if conn_feature:
@@ -337,9 +358,9 @@ class AlexaSession(QObject):
                     if reachability:
                         status = reachability.get("reachabilityStatusValue")
                         if status == "OK":
-                            connectivity_val = Device.Connectivity.OK
+                            connectivity_val = _Connectivity.OK
                         elif status == "UNREACHABLE":
-                            connectivity_val = Device.Connectivity.UNREACHABLE
+                            connectivity_val = _Connectivity.UNREACHABLE
 
         raw_fields: dict[str, str] = {}
         for key, value in item.items():
@@ -427,19 +448,21 @@ class AlexaSession(QObject):
         if encoded is None:
             raise InvalidResponseError("Could not encode applianceId")
 
-        extra_headers = ""
+        csrf_header = ""
         if self._csrf_token:
-            extra_headers = f', "csrf": {self._js_string(self._csrf_token)}'
+            csrf_header = f"xhr.setRequestHeader('csrf', {self._js_string(self._csrf_token)});"
 
         script = f"""
-        (async () => {{
+        (function() {{
+            var xhr = new XMLHttpRequest();
+            xhr.open('DELETE', '/api/phoenix/appliance/{encoded}', false);
+            xhr.withCredentials = true;
+            xhr.setRequestHeader('Accept', 'application/json');
+            xhr.setRequestHeader('Content-Type', 'application/json');
+            {csrf_header}
             try {{
-                const res = await fetch('/api/phoenix/appliance/{encoded}', {{
-                    method: 'DELETE',
-                    credentials: 'include',
-                    headers: {{ "Accept": "application/json", "Content-Type": "application/json"{extra_headers} }}
-                }});
-                return JSON.stringify({{status: res.status}});
+                xhr.send();
+                return JSON.stringify({{status: xhr.status}});
             }} catch (e) {{
                 return JSON.stringify({{status: -1, body: String(e)}});
             }}
@@ -472,7 +495,7 @@ class AlexaSession(QObject):
         try:
             type_name = json_data["data"]["endpoints"]["items"][0]["__typename"]
             log.debug("_introspect_fields: type_name=%s", type_name)
-        except (KeyError, IndexError):
+        except (KeyError, IndexError, TypeError):
             log.warning("_introspect_fields: no __typename received — response=%s", json_data)
             raise GraphQLErrors(["No __typename received"])
         details = await self._introspect_type_details(type_name)
