@@ -6,6 +6,7 @@ from PySide6.QtWidgets import (
 from PySide6.QtCore import Qt, QAbstractTableModel, QModelIndex, Signal, Slot, QSortFilterProxyModel
 from PySide6.QtGui import QDrag, QPixmap, QPainter, QColor, QFont
 
+from .icons import get_icon
 from .models.device import Device, Connectivity
 from .models.device_group import DeviceGroup
 from .view_model import DeviceListViewModel
@@ -51,7 +52,7 @@ class DeviceTableModel(QAbstractTableModel):
                 return f"{len(device.raw_fields)} fields" if device.raw_fields else "–"
         elif role == Qt.ItemDataRole.DecorationRole:
             if col == 1:
-                pass
+                return get_icon(device.type_symbol_name)
         elif role == Qt.ItemDataRole.ToolTipRole:
             if col == 4:
                 return device.appliance_id

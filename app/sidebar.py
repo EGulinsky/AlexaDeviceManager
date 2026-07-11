@@ -4,8 +4,9 @@ from PySide6.QtWidgets import (
     QInputDialog, QMessageBox,
 )
 from PySide6.QtCore import Qt, Signal, Slot
-from PySide6.QtGui import QDragEnterEvent, QDropEvent
+from PySide6.QtGui import QDragEnterEvent, QDropEvent, QIcon
 
+from .icons import get_icon
 from .models.device import Device
 from .models.filter import DeviceFilter
 from .view_model import DeviceListViewModel
@@ -67,29 +68,34 @@ class Sidebar(QWidget):
         overview.setFont(0, font)
 
         all_item = DeviceFilterItem("All Devices", DeviceFilter.all(), len(self._view_model.devices))
+        all_item.setIcon(0, get_icon("overview"))
         self.tree.addTopLevelItem(all_item)
 
         unresponsive = DeviceFilterItem(
             "Not Responding", DeviceFilter.unresponsive(),
             len(self._view_model.unresponsive_devices())
         )
+        unresponsive.setIcon(0, get_icon("alarm-light"))
         self.tree.addTopLevelItem(unresponsive)
 
         disabled = DeviceFilterItem(
             "Disabled Integrations", DeviceFilter.disabled_integrations(),
             len(self._view_model.devices_from_disabled_integrations())
         )
+        disabled.setIcon(0, get_icon("alert"))
         self.tree.addTopLevelItem(disabled)
 
         # Groups
         groups_header = QTreeWidgetItem(self.tree, ["Groups"])
         groups_header.setFlags(groups_header.flags() & ~Qt.ItemIsSelectable)
         groups_header.setFont(0, font)
+        groups_header.setIcon(0, get_icon("group"))
 
         for group, members in self._view_model.grouped_by_device_group:
             item = DeviceFilterItem(
                 group.name, DeviceFilter.group(group.id), len(members)
             )
+            item.setIcon(0, get_icon("group"))
             item.setData(0, Qt.UserRole, group)
             item.setFlags(item.flags() | Qt.ItemIsDropEnabled)
             self.tree.addTopLevelItem(item)
@@ -98,15 +104,20 @@ class Sidebar(QWidget):
         type_header = QTreeWidgetItem(self.tree, ["By Type"])
         type_header.setFlags(type_header.flags() & ~Qt.ItemIsSelectable)
         type_header.setFont(0, font)
+        type_header.setIcon(0, get_icon("shape"))
 
         for type_label, devices in self._view_model.grouped_by_type:
             item = DeviceFilterItem(type_label, DeviceFilter.type_(type_label), len(devices))
+            if devices:
+                sym = devices[0].type_symbol_name
+                item.setIcon(0, get_icon(sym))
             self.tree.addTopLevelItem(item)
 
         # By Integration (Skill)
         skill_header = QTreeWidgetItem(self.tree, ["By Integration (Skill)"])
         skill_header.setFlags(skill_header.flags() & ~Qt.ItemIsSelectable)
         skill_header.setFont(0, font)
+        skill_header.setIcon(0, get_icon("puzzle"))
 
         for skill_id, devices in self._view_model.grouped_by_skill:
             label = self._view_model.integration_label(skill_id)
