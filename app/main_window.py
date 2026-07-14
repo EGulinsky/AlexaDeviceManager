@@ -201,9 +201,17 @@ class MainWindow(QMainWindow):
         devices = self._target_devices(action)
         if not devices:
             return
+        try:
+            backup_path = self.view_model.backup_devices(devices)
+        except OSError as e:
+            QMessageBox.critical(
+                self, "Backup Failed",
+                f"The deletion backup could not be written, so deletion was cancelled.\n\n{e}",
+            )
+            return
         reply = QMessageBox.question(
             self, "Confirm Delete",
-            f"Really delete {len(devices)} device(s)? This cannot be undone.",
+            f"A backup was saved to:\n{backup_path}\n\nReally delete {len(devices)} device(s)? This cannot be undone.",
             QMessageBox.Yes | QMessageBox.No
         )
         if reply == QMessageBox.Yes:

@@ -1,7 +1,10 @@
 from __future__ import annotations
 import asyncio
+import json
+from datetime import datetime, timezone
+from pathlib import Path
 from typing import Callable
-from PySide6.QtCore import QObject, Signal
+from PySide6.QtCore import QObject, Signal, QStandardPaths
 
 from .session import AlexaSession
 from .store import IntegrationStore
@@ -105,6 +108,27 @@ class DeviceListViewModel(QObject):
 
     def unresponsive_devices(self) -> list[Device]:
         return [d for d in self._devices if d.connectivity == Connectivity.UNREACHABLE]
+
+    def backup_devices(self, devices: list[Device]) -> Path:
+        """Write a recovery snapshot before a destructive operation."""
+        root = Path(QStandardPaths.writableLocation(QStandardPaths.AppLocalDataLocation)) / "AlexaDeviceManager" / "backups"
+        root.mkdir(parents=True, exist_ok=True)
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        path = root / f"devices-{timestamp}.json"
+        payload = [{
+            "applianceId": d.appliance_id,
+            "friendlyName": d.friendly_name,
+            "connectivity": d.connectivity.value,
+            "manufacturer": d.manufacturer_name,
+            "displayCategory": d.display_category,
+            "endpointId": d.endpoint_id,
+            "associatedUnitId": d.associated_unit_id,
+            "rawFields": d.raw_fields,
+        } for d in devices]
+        temporary = path.with_suffix(".tmp")
+        temporary.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n")
+        temporary.replace(path)
+        return path
 
     # --- Group management ---
 
