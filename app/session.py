@@ -8,10 +8,10 @@ from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWebEngineCore import QWebEnginePage
 from qasync import asyncSlot, asyncClose
 
-from .models.device import Connectivity as _Connectivity, Device
+from .models.device import Device
 from .models.device_group import DeviceGroup
-from .models.appliance_id import ApplianceIDParser
 from .models.region import AlexaRegion
+from .api_parsers import parse_device, parse_device_group, stringify
 
 log = logging.getLogger(__name__)
 
@@ -323,77 +323,11 @@ class AlexaSession(QObject):
         raise GraphQLErrors([e.get("message", "Unknown error") for e in errors])
 
     def _parse_device(self, item: dict) -> Device:
-        friendly_name = item.get("friendlyName", "") or ""
-        legacy = item.get("legacyAppliance") or {}
-        appliance_id = legacy.get("applianceId", "") or ""
-        endpoint_id = item.get("id")
-
-        manufacturer_raw = item.get("manufacturer") or {}
-        manufacturer_name = None
-        if isinstance(manufacturer_raw, dict):
-            val = manufacturer_raw.get("value") or {}
-            if isinstance(val, dict):
-                manufacturer_name = val.get("text")
-
-        display_cat_raw = item.get("displayCategories") or {}
-        display_category = None
-        if isinstance(display_cat_raw, dict):
-            primary = display_cat_raw.get("primary") or {}
-            if isinstance(primary, dict):
-                display_category = primary.get("value")
-
-        associated_units = item.get("associatedUnits") or {}
-        associated_unit_id = None
-        if isinstance(associated_units, dict):
-            associated_unit_id = associated_units.get("id")
-
-        features = item.get("features") or []
-        connectivity_val = _Connectivity.UNKNOWN
-        if isinstance(features, list):
-            conn_feature = next((f for f in features if f.get("name") == "connectivity"), None)
-            if conn_feature:
-                props = conn_feature.get("properties") or []
-                if isinstance(props, list):
-                    reachability = next((p for p in props if p.get("__typename") == "Reachability"), None)
-                    if reachability:
-                        status = reachability.get("reachabilityStatusValue")
-                        if status == "OK":
-                            connectivity_val = _Connectivity.OK
-                        elif status == "UNREACHABLE":
-                            connectivity_val = _Connectivity.UNREACHABLE
-
-        raw_fields: dict[str, str] = {}
-        for key, value in item.items():
-            if key not in self._known_field_names:
-                raw_fields[key] = self._stringify(value)
-
-        return Device(
-            appliance_id=appliance_id,
-            friendly_name=friendly_name,
-            decoded=ApplianceIDParser.decode(appliance_id),
-            connectivity=connectivity_val,
-            manufacturer_name=manufacturer_name if manufacturer_name else None,
-            display_category=display_category if display_category else None,
-            endpoint_id=endpoint_id,
-            associated_unit_id=associated_unit_id,
-            raw_fields=raw_fields,
-        )
+        return parse_device(item, self._known_field_names)
 
     @staticmethod
     def _stringify(value: Any) -> str:
-        if value is None:
-            return "–"
-        if isinstance(value, str):
-            return value
-        if isinstance(value, bool):
-            return "true" if value else "false"
-        if isinstance(value, (int, float)):
-            return str(value)
-        if isinstance(value, list):
-            return ", ".join(AlexaSession._stringify(v) for v in value)
-        if isinstance(value, dict):
-            return ", ".join(f"{k}={AlexaSession._stringify(v)}" for k, v in value.items())
-        return str(value)
+        return stringify(value)
 
     # --- Group management ---
 
@@ -410,12 +344,7 @@ class AlexaSession(QObject):
 
     @staticmethod
     def _parse_device_group(item: dict) -> DeviceGroup:
-        gid = item.get("id", "") or ""
-        name_raw = item.get("friendlyName") or {}
-        name = (name_raw.get("value") or {}).get("text") or gid
-        member_items = (item.get("memberDevices") or {}).get("items") or []
-        endpoint_ids = {m.get("id", "") for m in member_items if m.get("id")}
-        return DeviceGroup(id=gid, name=name, member_endpoint_ids=endpoint_ids)
+        return parse_device_group(item)
 
     async def rename_device_group(self, group_id: str, new_name: str) -> bool:
         query = f"mutation {{ updateDeviceGroup(updateDeviceGroupInput: {{deviceGroupId: {self._js_string(group_id)}, friendlyName: {self._js_string(new_name)}}}) {{ deviceGroup {{ id }} }} }}"
