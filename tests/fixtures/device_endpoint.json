@@ -1,0 +1,13 @@
+{
+  "id": "endpoint-fixture-1",
+  "friendlyName": "Fixture Light",
+  "legacyAppliance": {"applianceId": "not-encoded-fixture-id"},
+  "manufacturer": {"value": {"text": "Fixture Vendor"}},
+  "displayCategories": {"primary": {"value": "LIGHT"}},
+  "features": [
+    {"name": "connectivity", "properties": [
+      {"__typename": "Reachability", "reachabilityStatusValue": "UNREACHABLE"}
+    ]}
+  ],
+  "customField": {"source": "recorded-fixture"}
+}
