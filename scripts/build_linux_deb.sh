@@ -34,7 +34,6 @@ Maintainer: Eugen Gulinsky
 Description: Cross-platform desktop app for managing Amazon Alexa smart home devices
  List, batch-delete unresponsive or unwanted devices, organize devices into
  groups, and inspect raw device data via Amazon's internal APIs.
-Depends: python3 (>= 3.11), python3-pyside6
 EOF
 
 # Create .desktop entry

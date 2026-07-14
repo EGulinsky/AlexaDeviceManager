@@ -32,4 +32,4 @@ pyinstaller \
 deactivate
 rm -rf build_venv build
 
-echo "Build complete: dist/$APP_NAME.exe"
+echo "Build complete: dist/$APP_NAME.exe (run this script on Windows; PyInstaller is host-platform specific)"

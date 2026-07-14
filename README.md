@@ -87,7 +87,9 @@ bundle identifier is `com.alexa-device-manager` and the icon comes from
 bash scripts/build_windows.sh
 ```
 
-Produces a standalone `.exe` in `dist/`. Expects a `resources/icon.ico` file
+Produces a standalone `.exe` in `dist/` when run on Windows. PyInstaller builds
+for the host platform; cross-platform releases should be built in native CI jobs.
+Expects a `resources/icon.ico` file
 for the application icon (optional — the build skips the icon flag if absent).
 
 To create a proper Windows installer (`.exe` setup) with Start Menu and
@@ -106,7 +108,7 @@ Output: `dist/AlexaDeviceManager-2.0.0-Setup.exe`
 bash scripts/build_linux.sh
 ```
 
-Produces a standalone AppImage-style executable in `dist/`. Expects a
+Produces a standalone Linux executable in `dist/` (not an AppImage). Expects a
 `resources/icon.png` file for the application icon (optional).
 
 To create a Debian package (`.deb`) for Debian/Ubuntu-based distributions:

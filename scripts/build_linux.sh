@@ -32,4 +32,4 @@ pyinstaller \
 deactivate
 rm -rf build_venv build
 
-echo "Build complete: dist/$APP_NAME (AppImage)"
+echo "Build complete: dist/$APP_NAME (standalone executable; use AppImage tooling for an AppImage)"

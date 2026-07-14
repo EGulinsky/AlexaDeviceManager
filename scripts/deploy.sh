@@ -16,14 +16,5 @@ codesign -f -s - "dist/$APP_NAME.app"
 echo "=== Deploy to /Applications ==="
 cp -Rf "dist/$APP_NAME.app" /Applications/
 
-echo "=== Git: stage all ==="
-git add -A
-
-if ! git diff --cached --quiet; then
-    git commit -m "WIP"
-    unset GH_TOKEN
-    git push
-    echo "=== Committed & pushed ==="
-else
-    echo "=== No changes to commit ==="
-fi
+echo "=== Git ==="
+echo "Deployment does not modify, commit, or push the repository."
