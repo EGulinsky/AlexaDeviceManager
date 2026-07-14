@@ -411,9 +411,6 @@ class TestViewModelDeletion:
 
 
 class TestViewModelHelpers:
-    def test_devices_from_disabled_integrations(self, view_model):
-        assert view_model.devices_from_disabled_integrations() == []
-
     def test_is_busy_property(self, view_model):
         assert view_model.is_busy is False
         view_model._is_busy = True

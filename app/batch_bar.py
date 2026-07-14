@@ -14,7 +14,6 @@ from .view_model import DeviceListViewModel
 class BatchActionsBar(QWidget):
     delete_selected = Signal()
     delete_unresponsive = Signal()
-    delete_disabled = Signal()
     delete_all = Signal()
     add_to_group = Signal(str, object)
     remove_from_group = Signal(str, object)
@@ -49,10 +48,6 @@ class BatchActionsBar(QWidget):
         self.delete_unr_btn.clicked.connect(self.delete_unresponsive.emit)
         layout.addWidget(self.delete_unr_btn)
 
-        self.delete_dis_btn = QPushButton("Delete Disabled Integrations (0)")
-        self.delete_dis_btn.clicked.connect(self.delete_disabled.emit)
-        layout.addWidget(self.delete_dis_btn)
-
         self.groups_menu_btn = QPushButton("Groups (0)")
         self.groups_menu = QMenu(self)
         self.groups_menu.triggered.connect(self._on_groups_menu_action)
@@ -74,10 +69,6 @@ class BatchActionsBar(QWidget):
         unresponsive = len(self._view_model.unresponsive_devices())
         self.delete_unr_btn.setText(f"Delete Not Responding ({unresponsive})")
         self.delete_unr_btn.setEnabled(unresponsive > 0 and not self._view_model.is_busy)
-
-        disabled = len(self._view_model.devices_from_disabled_integrations())
-        self.delete_dis_btn.setText(f"Delete Disabled Integrations ({disabled})")
-        self.delete_dis_btn.setEnabled(disabled > 0 and not self._view_model.is_busy)
 
         self.delete_all_btn.setText(f"Delete All ({len(self._view_model.devices)})")
         self.delete_all_btn.setEnabled(bool(self._view_model.devices) and not self._view_model.is_busy)

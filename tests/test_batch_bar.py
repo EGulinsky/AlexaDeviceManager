@@ -14,7 +14,6 @@ def view_model():
     vm.device_groups = []
     vm.is_busy = False
     vm.unresponsive_devices.return_value = []
-    vm.devices_from_disabled_integrations.return_value = []
     vm.grouped_by_device_group = []
     return vm
 
@@ -35,14 +34,12 @@ class TestBatchBarInit:
     def test_buttons_exist(self, bar):
         assert bar.delete_sel_btn.text() == "Delete Selected (0)"
         assert bar.delete_unr_btn.text() == "Delete Not Responding (0)"
-        assert bar.delete_dis_btn.text() == "Delete Disabled Integrations (0)"
         assert bar.delete_all_btn.text() == "Delete All (0)"
         assert bar.groups_menu_btn.text() == "Groups (0)"
 
     def test_buttons_enabled_initially(self, bar):
         assert bar.delete_sel_btn.isEnabled() is True
         assert bar.delete_unr_btn.isEnabled() is True
-        assert bar.delete_dis_btn.isEnabled() is True
         assert bar.delete_all_btn.isEnabled() is True
 
 
@@ -68,12 +65,6 @@ class TestBatchBarUpdateCounts:
         assert bar.delete_unr_btn.text() == "Delete Not Responding (1)"
         assert bar.delete_unr_btn.isEnabled() is True
 
-    def test_update_disabled_count(self, bar, view_model):
-        view_model.devices_from_disabled_integrations.return_value = [MagicMock(), MagicMock()]
-        bar.update_counts(0)
-        assert bar.delete_dis_btn.text() == "Delete Disabled Integrations (2)"
-        assert bar.delete_dis_btn.isEnabled() is True
-
     def test_update_all_count(self, bar, view_model):
         view_model.devices = [MagicMock(), MagicMock(), MagicMock()]
         bar.update_counts(0)
@@ -97,10 +88,6 @@ class TestBatchBarSignals:
     def test_delete_unresponsive_signal(self, bar, qtbot):
         with qtbot.waitSignal(bar.delete_unresponsive, timeout=500):
             bar.delete_unr_btn.click()
-
-    def test_delete_disabled_signal(self, bar, qtbot):
-        with qtbot.waitSignal(bar.delete_disabled, timeout=500):
-            bar.delete_dis_btn.click()
 
     def test_delete_all_signal(self, bar, qtbot):
         with qtbot.waitSignal(bar.delete_all, timeout=500):

@@ -123,11 +123,6 @@ class TestMainWindowFilter:
         window._on_filter_changed(DeviceFilter.unresponsive())
         window.view_model.unresponsive_devices.assert_called_once()
 
-    def test_filter_disabled(self, window):
-        window.view_model.devices_from_disabled_integrations = MagicMock(return_value=[MagicMock()])
-        window._on_filter_changed(DeviceFilter.disabled_integrations())
-        window.view_model.devices_from_disabled_integrations.assert_called_once()
-
     def test_filter_unknown_kind_falls_back(self, window):
         window._on_filter_changed(DeviceFilter("unknown_kind"))
         # Falls back to showing all devices (empty list by default)
@@ -189,15 +184,6 @@ class TestMainWindowBatch:
             window._delete_unresponsive()
         loop.close()
 
-    def test_delete_disabled(self, window):
-        import asyncio
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        window.view_model.devices_from_disabled_integrations = MagicMock(return_value=[MagicMock()])
-        with patch("app.main_window.QMessageBox.question", return_value=QMessageBox.Yes):
-            window._delete_disabled()
-        loop.close()
-
     def test_delete_all(self, window):
         import asyncio
         loop = asyncio.new_event_loop()
@@ -214,11 +200,6 @@ class TestMainWindowBatch:
     def test_target_devices_unresponsive(self, window):
         window.view_model.unresponsive_devices = MagicMock(return_value=[MagicMock()])
         result = window._target_devices(BatchAction.unresponsive())
-        assert len(result) == 1
-
-    def test_target_devices_disabled(self, window):
-        window.view_model.devices_from_disabled_integrations = MagicMock(return_value=[MagicMock()])
-        result = window._target_devices(BatchAction.disabled_integrations())
         assert len(result) == 1
 
     def test_target_devices_all(self, window):

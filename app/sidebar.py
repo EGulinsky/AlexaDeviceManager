@@ -78,13 +78,6 @@ class Sidebar(QWidget):
         unresponsive.setIcon(0, get_icon("alarm-light"))
         self.tree.addTopLevelItem(unresponsive)
 
-        disabled = DeviceFilterItem(
-            "Disabled Integrations", DeviceFilter.disabled_integrations(),
-            len(self._view_model.devices_from_disabled_integrations())
-        )
-        disabled.setIcon(0, get_icon("alert"))
-        self.tree.addTopLevelItem(disabled)
-
         # Groups
         groups_header = QTreeWidgetItem(self.tree, ["Groups"])
         groups_header.setFlags(groups_header.flags() & ~Qt.ItemIsSelectable)

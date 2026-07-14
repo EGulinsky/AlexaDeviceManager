@@ -106,9 +106,6 @@ class DeviceListViewModel(QObject):
     def unresponsive_devices(self) -> list[Device]:
         return [d for d in self._devices if d.connectivity == Connectivity.UNREACHABLE]
 
-    def devices_from_disabled_integrations(self) -> list[Device]:
-        return []
-
     # --- Group management ---
 
     async def create_group(self, name: str, members: list[Device] | None = None) -> None:

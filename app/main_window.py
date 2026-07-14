@@ -126,7 +126,6 @@ class MainWindow(QMainWindow):
 
         self.batch_bar.delete_selected.connect(self._delete_selected)
         self.batch_bar.delete_unresponsive.connect(self._delete_unresponsive)
-        self.batch_bar.delete_disabled.connect(self._delete_disabled)
         self.batch_bar.delete_all.connect(self._delete_all)
         self.batch_bar.add_to_group.connect(self._add_to_group)
         self.batch_bar.remove_from_group.connect(self._remove_from_group)
@@ -164,8 +163,6 @@ class MainWindow(QMainWindow):
             filtered = self.view_model.devices_in_group(filter_value.value)
         elif filter_value.kind == "unresponsive":
             filtered = self.view_model.unresponsive_devices()
-        elif filter_value.kind == "disabledIntegrations":
-            filtered = self.view_model.devices_from_disabled_integrations()
         else:
             filtered = devices
         self.device_list.set_devices(filtered)
@@ -217,8 +214,6 @@ class MainWindow(QMainWindow):
             return self.device_list.selected_devices()
         elif action.kind == "unresponsive":
             return self.view_model.unresponsive_devices()
-        elif action.kind == "disabledIntegrations":
-            return self.view_model.devices_from_disabled_integrations()
         elif action.kind == "all":
             return self.view_model.devices
         return action.devices or []
@@ -228,9 +223,6 @@ class MainWindow(QMainWindow):
 
     def _delete_unresponsive(self) -> None:
         self._confirm_batch_delete(BatchAction.unresponsive())
-
-    def _delete_disabled(self) -> None:
-        self._confirm_batch_delete(BatchAction.disabled_integrations())
 
     def _delete_all(self) -> None:
         self._confirm_batch_delete(BatchAction.all())

@@ -20,7 +20,6 @@ def view_model():
     vm.device_groups = []
     vm.is_busy = False
     vm.unresponsive_devices.return_value = []
-    vm.devices_from_disabled_integrations.return_value = []
     vm.grouped_by_device_group = []
     vm.grouped_by_type = []
     vm.grouped_by_skill = []
@@ -70,7 +69,6 @@ class TestSidebarBuildSections:
             texts.append(sidebar.tree.topLevelItem(i).text(0))
         assert "All Devices (0)" in texts
         assert "Not Responding (0)" in texts
-        assert "Disabled Integrations (0)" in texts
 
     def test_overview_items_have_filters(self, sidebar):
         for i in range(sidebar.tree.topLevelItemCount()):
