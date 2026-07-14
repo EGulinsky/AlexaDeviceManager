@@ -137,40 +137,50 @@ class DeviceListViewModel(QObject):
             self.status_message.emit(f"Error deleting: {e}")
         await self._refresh_groups_only()
 
-    async def add_devices(self, devices: list[Device], to_group: DeviceGroup) -> None:
+    async def add_devices(self, devices: list[Device], to_group: DeviceGroup) -> list[Device]:
         endpoint_ids = [d.endpoint_id for d in devices if d.endpoint_id]
         if not endpoint_ids:
-            return
+            return []
         succeeded = 0
+        added: list[Device] = []
         for eid in endpoint_ids:
             try:
                 await self.session.update_device_group_members(group_id=to_group.id, endpoint_ids=[eid], operation="ADD")
                 succeeded += 1
+                added.extend(d for d in devices if d.endpoint_id == eid)
             except Exception:
                 pass
             await asyncio.sleep(0.2)
         self.status_message.emit(f'{succeeded}/{len(endpoint_ids)} device(s) added to "{to_group.name}".')
         await self._refresh_groups_only()
+        return added
 
-    async def remove_devices(self, devices: list[Device], from_group: DeviceGroup) -> None:
+    async def remove_devices(self, devices: list[Device], from_group: DeviceGroup) -> list[Device]:
         endpoint_ids = [d.endpoint_id for d in devices if d.endpoint_id]
         if not endpoint_ids:
-            return
+            return []
         succeeded = 0
+        removed: list[Device] = []
         for eid in endpoint_ids:
             try:
                 await self.session.update_device_group_members(group_id=from_group.id, endpoint_ids=[eid], operation="REMOVE")
                 succeeded += 1
+                removed.extend(d for d in devices if d.endpoint_id == eid)
             except Exception:
                 pass
             await asyncio.sleep(0.2)
         self.status_message.emit(f'{succeeded}/{len(endpoint_ids)} device(s) removed from "{from_group.name}".')
         await self._refresh_groups_only()
+        return removed
 
     async def move_devices(self, devices: list[Device], source: DeviceGroup | None, destination: DeviceGroup) -> None:
         if source and source.id != destination.id:
-            await self.remove_devices(devices, from_group=source)
-        await self.add_devices(devices, to_group=destination)
+            removed = await self.remove_devices(devices, from_group=source)
+            if not removed:
+                self.status_message.emit("Move cancelled: no devices were removed from the source group.")
+                return []
+            return await self.add_devices(removed, to_group=destination)
+        return await self.add_devices(devices, to_group=destination)
 
     async def _refresh_groups_only(self) -> None:
         try:
