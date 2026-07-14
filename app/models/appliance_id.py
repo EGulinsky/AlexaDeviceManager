@@ -1,6 +1,7 @@
 from __future__ import annotations
 import re
 import base64
+import binascii
 import json
 from dataclasses import dataclass
 
@@ -31,7 +32,7 @@ class ApplianceIDParser:
             skill_id = payload.get("skillId")
             if not skill_id:
                 return None
-        except (json.JSONDecodeError, base64.binascii.Error, UnicodeDecodeError):
+        except (json.JSONDecodeError, binascii.Error, UnicodeDecodeError):
             return None
 
         domain_split = suffix.split("#", maxsplit=1)
