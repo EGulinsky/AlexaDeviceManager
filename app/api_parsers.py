@@ -56,7 +56,8 @@ def parse_device(item: dict, known_field_names: set[str]) -> Device:
         if isinstance(properties, list):
             reachability = next((p for p in properties if isinstance(p, dict) and p.get("__typename") == "Reachability"), None)
             status = reachability.get("reachabilityStatusValue") if reachability else None
-            connectivity = {"OK": Connectivity.OK, "UNREACHABLE": Connectivity.UNREACHABLE}.get(status, connectivity)
+            if isinstance(status, str):
+                connectivity = {"OK": Connectivity.OK, "UNREACHABLE": Connectivity.UNREACHABLE}.get(status, connectivity)
 
     raw_fields = {
         key: stringify(value) for key, value in item.items()

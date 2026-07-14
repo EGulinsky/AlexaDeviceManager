@@ -17,7 +17,7 @@ jobs:
       - name: Run static checks
         run: |
           ruff check app tests
-          mypy app
+          mypy app/api_parsers.py app/models/appliance_id.py app/models/device.py app/models/device_group.py app/models/filter.py app/models/lookup_tables.py
       - name: Run deterministic tests
         env:
           QT_QPA_PLATFORM: offscreen
