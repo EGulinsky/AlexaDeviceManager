@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import secrets
 from typing import Any
 from PySide6.QtCore import QObject, Signal, Slot, QUrl, QTimer
 from PySide6.QtWebEngineWidgets import QWebEngineView
@@ -217,8 +218,39 @@ class AlexaSession(QObject):
         return urllib.parse.quote(value, safe="-_.!~*'()")
 
     async def _evaluate_fetch(self, path: str, method: str, json_body: str) -> str:
-        script = self._fetch_script(path, method, json_body)
-        return await self.evaluate(script)
+        """Run a credentialed request without blocking Chromium's UI thread."""
+        request_id = secrets.token_hex(16)
+        start_script = f"""
+        (function() {{
+            window.__alexaDeviceManagerRequests = window.__alexaDeviceManagerRequests || {{}};
+            const requestId = {self._js_string(request_id)};
+            fetch({self._js_string(path)}, {{
+                method: {self._js_string(method)},
+                credentials: 'include',
+                headers: {{'Content-Type': 'application/json', 'Accept': 'application/json'}},
+                body: JSON.stringify({json_body})
+            }}).then(async function(response) {{
+                window.__alexaDeviceManagerRequests[requestId] = {{
+                    status: response.status,
+                    body: await response.text()
+                }};
+            }}).catch(function(error) {{
+                window.__alexaDeviceManagerRequests[requestId] = {{status: -1, body: String(error)}};
+            }});
+            return requestId;
+        }})()
+        """
+        await self.evaluate(start_script)
+        deadline = asyncio.get_running_loop().time() + 30
+        while asyncio.get_running_loop().time() < deadline:
+            result_script = f"JSON.stringify((window.__alexaDeviceManagerRequests || {{}})[{self._js_string(request_id)}] || null)"
+            raw_result = await self.evaluate(result_script, timeout_ms=5000)
+            if raw_result and raw_result != "null":
+                cleanup = f"delete (window.__alexaDeviceManagerRequests || {{}})[{self._js_string(request_id)}]"
+                await self.evaluate(cleanup, timeout_ms=5000)
+                return raw_result
+            await asyncio.sleep(0.05)
+        raise AlexaSessionError("Network request timed out")
 
     async def _decode_envelope(self, raw: str) -> bytes:
         try:
