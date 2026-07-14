@@ -55,6 +55,7 @@ class BatchActionsBar(QWidget):
 
         self.groups_menu_btn = QPushButton("Groups (0)")
         self.groups_menu = QMenu(self)
+        self.groups_menu.triggered.connect(self._on_groups_menu_action)
         self._build_groups_menu([])
         self.groups_menu_btn.setMenu(self.groups_menu)
         layout.addWidget(self.groups_menu_btn)
@@ -106,8 +107,6 @@ class BatchActionsBar(QWidget):
         self.groups_menu.addSeparator()
         new_group_action = self.groups_menu.addAction("New Group from Selection...")
         new_group_action.setData(("new", None))
-
-        self.groups_menu.triggered.connect(self._on_groups_menu_action)
 
     def _on_groups_menu_action(self, action) -> None:
         data = action.data()
